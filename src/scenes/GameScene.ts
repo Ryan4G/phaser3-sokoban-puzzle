@@ -1,28 +1,41 @@
 
 import Phaser from 'phaser';
-import {Materials} from '~enums/SokobanEnums';
-import {GetBoxColorTargetMap} from '~util/SokobanBoxUtil';
-import {MoveOrientation} from '~types/SokobanTypes';
+import { Materials, SokobanLevel, BoxColors } from '~enums/SokobanEnums';
+import { GetBoxTargetColor, GetSokobanLevelData, GetBoxAnchorColor, GetBrowserMobileMode } from '~util/SokobanBoxUtil';
+import { MoveOrientation } from '~types/SokobanTypes';
 
 export default class GameScene extends Phaser.Scene {
 
     private readonly SIZE: {w:number, h:number};
-    private readonly BOXCOLORS: Array<Materials>;
-    private readonly BOXCOLOR_TARGET_MAP: {[key:number]:number};
+    private readonly BOXCOLORS: Array<BoxColors>;
+    private readonly MOBILEMODE: boolean;
 
     private player?: Phaser.GameObjects.Sprite;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private boxes?: { [key: number]: Array<Phaser.GameObjects.Sprite> } = {};
     private layer?: Phaser.Tilemaps.TilemapLayer;
     private scores?: { [key: number]: number } = {};
+    private steps?: number;
+    private stepsLabel?: Phaser.GameObjects.Text;
 
     private debugPos?: Phaser.GameObjects.Rectangle;
+
+    private currentLevel: number = 1;
+
+    private joySticks?: { [key: string]: Phaser.GameObjects.Rectangle } = {};
+
+    private currentJoyStick?: string;
 
     constructor() {
         super('GameScene');
         this.SIZE = {w: 64, h: 64};
-        this.BOXCOLORS = [Materials.BoxOrange, Materials.BoxRed, Materials.BoxBlue, Materials.BoxGreen, Materials.BoxGrey];
-        this.BOXCOLOR_TARGET_MAP = GetBoxColorTargetMap();
+        this.BOXCOLORS = [BoxColors.BoxOrange, BoxColors.BoxRed, BoxColors.BoxBlue, BoxColors.BoxGreen, BoxColors.BoxGrey];
+        this.MOBILEMODE = GetBrowserMobileMode();
+    }
+
+    init(){
+        this.steps = 0;
+        this.resetCurrentJoyStick();
     }
 
     preload() {
@@ -33,17 +46,15 @@ export default class GameScene extends Phaser.Scene {
             });
     }
 
-    create() {
-        const level = [
-            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
-            [100,   0,   0,   0,   0,   0,   0,   0,   0, 100],
-            [100,   6,   7,   8,   9,  10,   0,   0,   0, 100],
-            [100,  25,  38,  51,  64,  77,   0,  52,   0, 100],
-            [100,   0,   0,   0,   0,   0,   0,   0,   0, 100],
-            [100,   0,   0,   0,   0,   0,   0,   0,   0, 100],
-            [100,   0,   0,   0,   0,   0,   0,   0,   0, 100],
-            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-        ];
+    create(data: {level: SokobanLevel}) {
+
+        data = Object.assign({level: SokobanLevel.Level1}, data);
+
+        this.currentLevel = data.level;
+
+        console.log(`level ${data.level}`);
+
+        const level = GetSokobanLevelData(this.currentLevel);
 
         const map = this.make.tilemap({
             data: level,
@@ -66,7 +77,45 @@ export default class GameScene extends Phaser.Scene {
         
         this.makeColorBoxes();
 
-        this.debugPos = this.add.rectangle(0, 0 , 10, 10, 0xff0000);
+        if (this.game.config.physics.arcade?.debug){
+            this.debugPos = this.add.rectangle(0, 0 , 10, 10, 0xff0000);
+        }
+
+        this.stepsLabel = this.add.text(540, 10, `Steps: ${this.steps}`);
+
+        /*  
+         * center the main camera viewpoint
+         */
+        //console.log(this.scale.gameSize);
+
+        const gameWidth = typeof this.game.config.width === 'number' ? this.game.config.width : 0;
+        const gameHeight = typeof this.game.config.height === 'number' ? this.game.config.height : 0;
+        const parent = new Phaser.Structs.Size(this.scale.gameSize.width, this.scale.gameSize.height);
+        const sizer = new Phaser.Structs.Size(gameWidth, gameHeight, Phaser.Structs.Size.FIT, parent);
+
+        // console.log(parent);
+        // console.log(sizer);
+
+        const camera = this.cameras.main;
+        camera.centerOn(gameWidth * 0.5, gameHeight * 0.5);
+
+        if (this.MOBILEMODE){
+
+            this.input.addPointer();
+
+            // joystick
+            const screenHeight = sizer.height;
+            // up-stick
+            this.joySticks!['up'] = this.add.rectangle(65, screenHeight - 165, 50, 80, 0x5090c7, 0.6).setInteractive();
+            // down-stick
+            this.joySticks!['down'] = this.add.rectangle(65, screenHeight - 35, 50, 80, 0x5090c7, 0.6).setInteractive();
+            // left-stick
+            this.joySticks!['left'] = this.add.rectangle(0, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
+            // right-stick
+            this.joySticks!['right'] = this.add.rectangle(130, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
+        
+            this.initJoySticksEvent();
+        }
     }
 
     update() {
@@ -80,6 +129,26 @@ export default class GameScene extends Phaser.Scene {
             up: Phaser.Input.Keyboard.JustDown(this.cursors.up),
             down: Phaser.Input.Keyboard.JustDown(this.cursors.down)
         };
+
+        if (this.MOBILEMODE){
+
+            if (this.currentJoyStick !== 'idle'){
+                const stick = this.currentJoyStick;
+
+                if (stick == 'left'){
+                    justDownHandle.left = true;
+                }
+                else if (stick == 'right'){
+                    justDownHandle.right = true;
+                }
+                else if (stick == 'up'){
+                    justDownHandle.up = true;
+                }
+                else if (stick == 'down'){
+                    justDownHandle.down = true;
+                }
+            }
+        }
 
         if (this.tweens.isTweening(this.player!)){
             return;
@@ -104,6 +173,12 @@ export default class GameScene extends Phaser.Scene {
                 this.player!.anims.pause(currAnimFirstFrame);
             }
         }
+    
+        if (this.MOBILEMODE){
+            this.resetCurrentJoyStick();
+        }
+        
+        this.updateGameLabels();
     }
 
     private createPlayerAnimation(): void{
@@ -175,7 +250,7 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
 
-        let boxData: { box: Phaser.GameObjects.Sprite, color: Materials } | undefined;
+        let boxData: { box: Phaser.GameObjects.Sprite, color: BoxColors } | undefined;
 
         let tweenConfig = {
             duration: 500
@@ -276,18 +351,19 @@ export default class GameScene extends Phaser.Scene {
         if (boxData){
             const box = boxData.box;
             const color = boxData.color;
-            const target = this.BOXCOLOR_TARGET_MAP[color];
+            const target = GetBoxTargetColor(color);
+            const anchor = GetBoxAnchorColor(color);
             // is there a sibling box on the next move position ? 
             // the 'pos' is the player next move position with offset
             const siblingBox = this.getBoxDataAtPos(pos.x + pos.offsetX, pos.y + pos.offsetY);
 
             this.debugPos?.setPosition(pos.x + pos.offsetX, pos.y + pos.offsetY);
 
-            console.log(siblingBox);
             if (siblingBox || this.hasDestTileAtPos(
                 box.x + pos.offsetX, 
                 box.y + pos.offsetY, 
                 [ Materials.Wall ])){
+                
                 return;
             }
 
@@ -302,31 +378,47 @@ export default class GameScene extends Phaser.Scene {
                     
                     if (coverTarget){
                         this.scores![color] += 1;
-                    }
-                    else{
-                        this.scores![color] = Math.max(0, this.scores![color] - 1);
+
+                        box.setFrame(anchor)
                     }
 
-                    //console.log(this.scores![Materials.TargetBlue])
+                    // when box move out of the target , scores should substract 1 
+                    const moveOutTarget = this.hasDestTileAtPos(box.x - pos.offsetX, box.y - pos.offsetY, [ target ]);
+                        
+                    if (moveOutTarget){
+                        this.scores![color] = Math.max(0, this.scores![color] - 1);
+
+                        // when next position is none, the box should restore its perface
+                        if (!coverTarget){
+                            box.setFrame(color)
+                        }
+                    }
                 }
             }, tweenConfig));
         }
         
         this.tweens.add(Object.assign({
-            targets: this.player
+            targets: this.player,
+            onComplete: () => {
+                this.steps!++;
+                
+                const levelCompleted = this.checkAllTargetCovered();
+                if (levelCompleted){
+                    this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
+                }
+            }
         }, tweenConfig));
 
-        console.log(this.scores);
     }
 
-    private hasDestTileAtPos(x: number, y: number, m: Materials[]): boolean{
+    private hasDestTileAtPos(x: number, y: number, nums: number[]): boolean{
         if(!this.layer){
             return false;
         }
 
         const tile = this.layer.getTileAtWorldXY(x, y);
 
-        return m.indexOf(tile?.index) != -1;
+        return nums.indexOf(tile?.index) != -1;
     }
 
     private makeColorBoxes(): void{
@@ -336,9 +428,58 @@ export default class GameScene extends Phaser.Scene {
         }
 
         this.BOXCOLORS.forEach(i => {
+            // init box tile
             this.boxes![i] = this.layer!.createFromTiles(i, 0, { key: 'tiles', frame: i })
             .map(box => box.setOrigin(0));
+            // init scores data
+            this.scores![i] = 0;
         });
 
+    }
+
+    private checkAllTargetCovered(): boolean{
+        if (!this.layer || !this.boxes || !this.scores){
+            return false;
+        }
+
+        for(let i = 0; i < this.BOXCOLORS.length; i++){
+            const color = this.BOXCOLORS[i];
+
+            const colorBoxes = this.boxes[color];
+            const targetScore = this.scores[color];
+
+            //console.log(color, targetScore, colorBoxes.length)
+            if (targetScore < colorBoxes.length){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private updateGameLabels(){
+        if (!this.stepsLabel){
+            return;
+        }
+
+        this.stepsLabel.text = `Steps: ${this.steps}`;
+    }
+
+    private initJoySticksEvent(){
+        if (!this.joySticks){
+            return;
+        }
+
+        const joyStickNames = Object.keys(this.joySticks!);
+        for(let i = 0; i < joyStickNames.length; i++){
+            const stick = joyStickNames[i];
+            this.joySticks[stick].on('pointerup', ()=>{
+                this.currentJoyStick = stick;
+            }, this);
+        }
+    }
+
+    private resetCurrentJoyStick(){
+        this.currentJoyStick = 'idle';
     }
 }
