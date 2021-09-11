@@ -14,7 +14,10 @@ export default class LevelCompleteScene extends Phaser.Scene{
 
     create(data: {steps: number, level: SokobanLevel}){
 
-        data = Object.assign({steps: 0, level: SokobanLevel.Level1}, data);
+        const defaultLevel = SokobanLevel.Level6;
+        const highestLevel = SokobanLevel.Level20;
+
+        data = Object.assign({steps: 0, level: defaultLevel}, data);
 
         const width = this.scale.width;
         const height = this.scale.height;
@@ -24,7 +27,7 @@ export default class LevelCompleteScene extends Phaser.Scene{
             color: '#dcdcaa'
         }).setOrigin(0.5);
 
-        this.add.text(width * 0.5, height * 0.45, `Steps: ${data.steps}`,{
+        this.add.text(width * 0.5, height * 0.45, `Level: ${data.level}  Steps: ${data.steps}`,{
             fontSize: '28px'
         }).setOrigin(0.5);
 
@@ -38,7 +41,7 @@ export default class LevelCompleteScene extends Phaser.Scene{
         }, this);
 
         
-        if (data.level >= SokobanLevel.Level5){
+        if (data.level >= highestLevel){
             return;
         }
 

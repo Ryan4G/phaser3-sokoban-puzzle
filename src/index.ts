@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 
 import GameScene from './scenes/GameScene'
 import LevelCompleteScene from '~scenes/LevelCompleteScene';
+import PreloadScene from '~scenes/PreloadScene';
 
 const config: Phaser.Types.Core.GameConfig = {
 	type: Phaser.AUTO,
@@ -18,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
 			debug: false
 		}
 	},
-	scene: [GameScene, LevelCompleteScene]
+	scene: [PreloadScene, GameScene, LevelCompleteScene]
 }
 
 export default new Phaser.Game(config)

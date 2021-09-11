@@ -1,8 +1,8 @@
 
 import Phaser from 'phaser';
 import { Materials, SokobanLevel, BoxColors } from '~enums/SokobanEnums';
-import { GetBoxTargetColor, GetSokobanLevelData, GetBoxAnchorColor, GetBrowserMobileMode } from '~util/SokobanBoxUtil';
-import { MoveOrientation } from '~types/SokobanTypes';
+import { GetBoxTargetColor, GetSokobanLevelInfo, GetBoxAnchorColor, GetBrowserMobileMode, GetSokobanTileMixinMap } from '~util/SokobanBoxUtil';
+import { MoveOrientation, SokobanLevelInfo } from '~types/SokobanTypes';
 
 export default class GameScene extends Phaser.Scene {
 
@@ -44,6 +44,8 @@ export default class GameScene extends Phaser.Scene {
                 frameWidth: this.SIZE.w,
                 startFrame: 0
             });
+        
+        this.load.json('levelJson', 'assets/map/SokobanLevels.json');
     }
 
     create(data: {level: SokobanLevel}) {
@@ -52,17 +54,17 @@ export default class GameScene extends Phaser.Scene {
 
         this.currentLevel = data.level;
 
-        console.log(`level ${data.level}`);
+        //console.log(`level ${data.level}`);
 
-        const level = GetSokobanLevelData(this.currentLevel);
+        // const levelInfo = GetSokobanLevelInfo(this.currentLevel);
+        const levels = this.cache.json.get('levelJson') as Array<SokobanLevelInfo>;
+        const levelInfo = levels[this.currentLevel - 1];
 
         const map = this.make.tilemap({
-            data: level,
+            data: levelInfo.data,
             tileHeight: this.SIZE.h,
             tileWidth: this.SIZE.w
         });
-
-        map.setCollisionBetween(100, 105);
 
         const tiles = map.addTilesetImage('tiles');
         this.layer = map.createLayer(0, tiles, 0, 0);
@@ -73,15 +75,27 @@ export default class GameScene extends Phaser.Scene {
 
         this.cursors = this.input.keyboard.createCursorKeys();
 
+        this.input.keyboard.on('keydown-R', () => {
+            this.scene.restart();
+        });
+
+        this.input.keyboard.on('keydown-N', () => {
+            this.scene.restart({level: Math.max(this.currentLevel - 1, SokobanLevel.Level1)});
+        });
+
+        this.input.keyboard.on('keydown-M', () => {
+            this.scene.restart({level: Math.min(this.currentLevel + 1, SokobanLevel.Level20)});
+        });
+
         this.createPlayerAnimation();
         
-        this.makeColorBoxes();
+        this.makeColorBoxes(levelInfo);
 
         if (this.game.config.physics.arcade?.debug){
             this.debugPos = this.add.rectangle(0, 0 , 10, 10, 0xff0000);
         }
 
-        this.stepsLabel = this.add.text(540, 10, `Steps: ${this.steps}`);
+        this.stepsLabel = this.add.text(540, 10, `Level: ${this.currentLevel}  Steps: ${this.steps}`);
 
         /*  
          * center the main camera viewpoint
@@ -105,6 +119,7 @@ export default class GameScene extends Phaser.Scene {
 
             // joystick
             const screenHeight = sizer.height;
+            const screenWidth = sizer.width;
             // up-stick
             this.joySticks!['up'] = this.add.rectangle(65, screenHeight - 165, 50, 80, 0x5090c7, 0.6).setInteractive();
             // down-stick
@@ -113,7 +128,8 @@ export default class GameScene extends Phaser.Scene {
             this.joySticks!['left'] = this.add.rectangle(0, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
             // right-stick
             this.joySticks!['right'] = this.add.rectangle(130, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
-        
+            // rest-stick
+            this.joySticks!['reset'] = this.add.rectangle(screenWidth - 50, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
             this.initJoySticksEvent();
         }
     }
@@ -253,7 +269,7 @@ export default class GameScene extends Phaser.Scene {
         let boxData: { box: Phaser.GameObjects.Sprite, color: BoxColors } | undefined;
 
         let tweenConfig = {
-            duration: 500
+            duration: 100
         };
 
         let pos: {x: number, y: number, offsetX: number, offsetY: number} 
@@ -421,18 +437,54 @@ export default class GameScene extends Phaser.Scene {
         return nums.indexOf(tile?.index) != -1;
     }
 
-    private makeColorBoxes(): void{
+    private makeColorBoxes(levelInfo: SokobanLevelInfo): void{
 
         if (!this.boxes || !this.layer){
             return;
         }
 
+        let mixinMap: {[key: number]: Array<number>} = {};
+
+        if (levelInfo.mixin){
+            mixinMap = GetSokobanTileMixinMap(levelInfo.data)
+        }
+
+        let index_id = 0;
+        let replace_id = 0;
+        let frame_id = 0;
+
         this.BOXCOLORS.forEach(i => {
+
+            index_id = i;
+            replace_id = 0;
+            frame_id = i;
+
             // init box tile
-            this.boxes![i] = this.layer!.createFromTiles(i, 0, { key: 'tiles', frame: i })
+            this.boxes![i] = this.layer!.createFromTiles(index_id, replace_id, { key: 'tiles', frame: frame_id })
             .map(box => box.setOrigin(0));
+
             // init scores data
             this.scores![i] = 0;
+
+            // when current level has mixin
+            if (levelInfo.mixin){
+                const targets = mixinMap[i];
+
+                if (targets){
+                    for(let target of targets){
+                        index_id = i * 100 + target;
+                        replace_id = target;
+                        frame_id = i;
+
+                        let mixinBoxes = this.layer!.createFromTiles(index_id, replace_id, { key: 'tiles', frame: frame_id })
+                        .map(box => box.setOrigin(0));
+
+                        if (mixinBoxes){
+                            this.boxes![i].push(...mixinBoxes);
+                        }
+                    }
+                }
+            }
         });
 
     }
@@ -462,7 +514,7 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.stepsLabel.text = `Steps: ${this.steps}`;
+        this.stepsLabel.text = `Level: ${this.currentLevel}  Steps: ${this.steps}`;
     }
 
     private initJoySticksEvent(){
@@ -473,9 +525,17 @@ export default class GameScene extends Phaser.Scene {
         const joyStickNames = Object.keys(this.joySticks!);
         for(let i = 0; i < joyStickNames.length; i++){
             const stick = joyStickNames[i];
-            this.joySticks[stick].on('pointerup', ()=>{
-                this.currentJoyStick = stick;
-            }, this);
+
+            if (stick === 'reset'){
+                this.joySticks[stick].on('pointerup', ()=>{
+                    this.scene.restart();
+                }, this);
+            }
+            else{
+                this.joySticks[stick].on('pointerup', ()=>{
+                    this.currentJoyStick = stick;
+                }, this);
+            }
         }
     }
 
