@@ -4,9 +4,9 @@ import { SokobanLevel } from '~enums/SokobanEnums';
 
 import { SokobanLevelInfo } from '~types/SokobanTypes';
 
-function GetBoxTargetColor(boxColor: BoxColors): TargetColors {
+function GetBoxTargetColor(boxColor: BoxColors): TargetColors | undefined {
 
-    let targetColor: TargetColors = TargetColors.TargetBlue;
+    let targetColor: TargetColors | undefined;
 
     switch(boxColor){
         case BoxColors.BoxOrange:{
@@ -37,9 +37,9 @@ function GetBoxTargetColor(boxColor: BoxColors): TargetColors {
 }
 
 
-function GetBoxAnchorColor(boxColor: BoxColors): AnchorColors {
+function GetBoxAnchorColor(boxColor: BoxColors): AnchorColors | undefined {
 
-    let anchorColor: AnchorColors = AnchorColors.AnchorBlue;
+    let anchorColor: AnchorColors | undefined;
 
     switch(boxColor){
         case BoxColors.BoxOrange:{
@@ -67,163 +67,6 @@ function GetBoxAnchorColor(boxColor: BoxColors): AnchorColors {
         }
     }
     return anchorColor;
-}
-
-function GetSokobanLevelInfo(level: SokobanLevel) : SokobanLevelInfo{
-
-    // is there box cover target from init tile map
-    let mixin = false;
-
-    let levelData = [
-        [   0,   0,   0, 100, 100, 100,   0,   0,   0,   0],
-        [   0,   0,   0, 100,  51, 100,   0,   0,   0,   0],
-        [   0,   0,   0, 100,   0, 100, 100, 100, 100,   0],
-        [   0, 100, 100, 100,   8,   0,   8,  51, 100,   0],
-        [   0, 100,  51,   0,   8,  52, 100, 100, 100,   0],
-        [   0, 100, 100, 100, 100,   8, 100,   0,   0,   0],
-        [   0,   0,   0,   0, 100,  51, 100,   0,   0,   0],
-        [   0,   0,   0,   0, 100, 100, 100,   0,   0,   0]
-    ];
-
-    switch(level){
-        case SokobanLevel.Level1: {
-            levelData = [
-                [   0,   0,   0, 100, 100, 100,   0,   0,   0,   0],
-                [   0,   0,   0, 100,  51, 100,   0,   0,   0,   0],
-                [   0,   0,   0, 100,   0, 100, 100, 100, 100,   0],
-                [   0, 100, 100, 100,   8,   0,   8,  51, 100,   0],
-                [   0, 100,  51,   0,   8,  52, 100, 100, 100,   0],
-                [   0, 100, 100, 100, 100,   8, 100,   0,   0,   0],
-                [   0,   0,   0,   0, 100,  51, 100,   0,   0,   0],
-                [   0,   0,   0,   0, 100, 100, 100,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level2: {
-            levelData = [
-                [   0,   0,   0, 100, 100, 100,   0,   0,   0,   0],
-                [   0,   0, 100, 100,  51, 100,   0,   0,   0,   0],
-                [   0,   0, 100,   0,   8, 100, 100, 100, 100,   0],
-                [   0, 100, 100,   0,   0,   0,   8,  52, 100,   0],
-                [   0, 100,  51,   0,   8,   8,  51, 100, 100,   0],
-                [   0, 100, 100, 100, 100,   0, 100,   0,   0,   0],
-                [   0,   0,   0,   0, 100,  51, 100,   0,   0,   0],
-                [   0,   0,   0,   0, 100, 100, 100,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level3: {
-            levelData = [
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
-                [   0,   0, 100, 100, 100,   0,   0,   0,   0,   0],
-                [   0,   0, 100,  51, 100, 100, 100, 100, 100,   0],
-                [   0,   0, 100,  51,  51,   0,   0,   0, 100,   0],
-                [   0,   0, 100,   0,   8,   8,   8,  52, 100,   0],
-                [   0,   0, 100,   0,   0,   0,   0, 100,   0,   0],
-                [   0,   0, 100, 100, 100, 100, 100, 100,   0,   0],
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level4: {
-            levelData = [
-                [ 100, 100, 100, 100, 100, 100,   0,   0,   0,   0],
-                [ 100,  51,  51,  51,  51, 100, 100, 100, 100,   0],
-                [ 100,   0,   0,   8, 100, 100,   0,   0, 100,   0],
-                [ 100,   0,   8,   8,   0,   0,   0,   0, 100,   0],
-                [ 100,  52,   8,   0,   0,   0,   0,   0, 100,   0],
-                [ 100, 100,   0,   0, 100, 100, 100, 100, 100,   0],
-                [   0, 100, 100, 100, 100,   0,   0,   0,   0,   0],
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level5: {
-            levelData = [
-                [   0,   0,   0, 100, 100, 100, 100,   0,   0,   0],
-                [   0,   0,   0, 100,   0,  52, 100, 100, 100,   0],
-                [   0,   0,   0, 100,   8,   8,   0,   0, 100,   0],
-                [   0, 100, 100, 100,   0,   8,  51,   0, 100,   0],
-                [   0, 100,  51,  51,  51,   0, 100, 100, 100,   0],
-                [   0, 100, 100, 100,   8,   0, 100,   0,   0,   0],
-                [   0,   0,   0, 100,   0,   0, 100,   0,   0,   0],
-                [   0,   0,   0, 100, 100, 100, 100,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level6: {
-            levelData = [
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
-                [   0,   0,   0,   0, 100, 100, 100, 100,   0,   0],
-                [   0,   0, 100, 100, 100,   0,   0, 100,   0,   0],
-                [   0,   0, 100,   0,   9,  38,   0, 100,   0,   0],
-                [   0,   0, 100,   0,   7,  64,   0, 100,   0,   0],
-                [   0,   0, 100,  52,   0,   0, 100, 100,   0,   0],
-                [   0,   0, 100, 100, 100, 100, 100,   0,   0,   0],
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level7: {
-            levelData = [
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
-                [   0,   0, 100, 100, 100, 100, 100, 100,   0,   0],
-                [   0,   0, 100,   0,   0,   0,  52, 100,   0,   0],
-                [   0,   0, 100,   0, 764,   0,   0, 100,   0,   0],
-                [   0,   0, 100,   0, 938,   0, 100, 100,   0,   0],
-                [   0,   0, 100, 100,   0,   0, 100,   0,   0,   0],
-                [   0,   0,   0, 100, 100, 100, 100,   0,   0,   0],
-                [   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
-            ];
-
-            mixin = true;
-            break;
-        }
-        case SokobanLevel.Level8: {
-            levelData = [
-                [  0,   0, 100, 100, 100,   0,   0,   0,   0,   0],
-                [  0, 100, 100,  51, 100,   0,   0,   0,   0,   0],
-                [  0, 100,   0,   8, 100, 100, 100, 100,   0,   0],
-                [100, 100,   0,   0,   0,   8,  52, 100,   0,   0],
-                [100,  51,   0,   8,   8,  51, 100, 100,   0,   0],
-                [100, 100, 100, 100,   0, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100,  51, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100, 100, 100,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level9: {
-            levelData = [
-                [  0,   0, 100, 100, 100,   0,   0,   0,   0,   0],
-                [  0, 100, 100,  51, 100,   0,   0,   0,   0,   0],
-                [  0, 100,   0,   8, 100, 100, 100, 100,   0,   0],
-                [100, 100,   0,   0,   0,   8,  52, 100,   0,   0],
-                [100,  51,   0,   8,   8,  51, 100, 100,   0,   0],
-                [100, 100, 100, 100,   0, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100,  51, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100, 100, 100,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        case SokobanLevel.Level10: {
-            levelData = [
-                [  0,   0, 100, 100, 100,   0,   0,   0,   0,   0],
-                [  0, 100, 100,  51, 100,   0,   0,   0,   0,   0],
-                [  0, 100,   0,   8, 100, 100, 100, 100,   0,   0],
-                [100, 100,   0,   0,   0,   8,  52, 100,   0,   0],
-                [100,  51,   0,   8,   8,  51, 100, 100,   0,   0],
-                [100, 100, 100, 100,   0, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100,  51, 100,   0,   0,   0,   0],
-                [  0,   0,   0, 100, 100, 100,   0,   0,   0,   0]
-            ];
-            break;
-        }
-        default:{
-            break;
-        }
-    }
-    
-    return { data: levelData, mixin, title: '', level:1 };
 }
 
 function GetSokobanTileMixinMap(data: number[][]): {[key: number]: Array<number>}{
@@ -259,7 +102,6 @@ function GetBrowserMobileMode():boolean{
 export {
     GetBoxAnchorColor,
     GetBoxTargetColor,
-    GetSokobanLevelInfo,
     GetBrowserMobileMode,
     GetSokobanTileMixinMap
 }

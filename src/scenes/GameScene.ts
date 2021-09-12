@@ -1,8 +1,9 @@
 
 import Phaser from 'phaser';
 import { Materials, SokobanLevel, BoxColors } from '~enums/SokobanEnums';
-import { GetBoxTargetColor, GetSokobanLevelInfo, GetBoxAnchorColor, GetBrowserMobileMode, GetSokobanTileMixinMap } from '~util/SokobanBoxUtil';
+import { GetBoxTargetColor, GetBoxAnchorColor, GetBrowserMobileMode, GetSokobanTileMixinMap } from '~util/SokobanBoxUtil';
 import { MoveOrientation, SokobanLevelInfo } from '~types/SokobanTypes';
+import { IPlayRecords } from '~interfaces/IPlayerRecord';
 
 export default class GameScene extends Phaser.Scene {
 
@@ -26,26 +27,40 @@ export default class GameScene extends Phaser.Scene {
 
     private currentJoyStick?: string;
 
+    private playerRecord?: IPlayRecords;
+
     constructor() {
         super('GameScene');
         this.SIZE = {w: 64, h: 64};
-        this.BOXCOLORS = [BoxColors.BoxOrange, BoxColors.BoxRed, BoxColors.BoxBlue, BoxColors.BoxGreen, BoxColors.BoxGrey];
+        this.BOXCOLORS = [
+            BoxColors.BoxOrange, 
+            BoxColors.BoxRed, 
+            BoxColors.BoxBlue, 
+            BoxColors.BoxGreen, 
+            BoxColors.BoxGrey,
+            BoxColors.BoxGreySolid
+        ];
         this.MOBILEMODE = GetBrowserMobileMode();
     }
 
     init(){
         this.steps = 0;
         this.resetCurrentJoyStick();
+
+        if (!this.playerRecord){
+            this.playerRecord = this.data.get('playRecords') as IPlayRecords;
+
+            if (!this.playerRecord){
+                this.playerRecord =  {
+                    level: 1,
+                    title: '1-1'
+                };
+            }
+        }
     }
 
     preload() {
-        this.load.spritesheet('tiles', 'assets/tilesheet/sokoban_tilesheet.png',
-            {
-                frameWidth: this.SIZE.w,
-                startFrame: 0
-            });
-        
-        this.load.json('levelJson', 'assets/map/SokobanLevels.json');
+
     }
 
     create(data: {level: SokobanLevel}) {
@@ -54,9 +69,8 @@ export default class GameScene extends Phaser.Scene {
 
         this.currentLevel = data.level;
 
-        //console.log(`level ${data.level}`);
-
-        // const levelInfo = GetSokobanLevelInfo(this.currentLevel);
+        //console.log(this.cache.json.get('levelJson'));
+        
         const levels = this.cache.json.get('levelJson') as Array<SokobanLevelInfo>;
         const levelInfo = levels[this.currentLevel - 1];
 
@@ -66,7 +80,7 @@ export default class GameScene extends Phaser.Scene {
             tileWidth: this.SIZE.w
         });
 
-        const tiles = map.addTilesetImage('tiles');
+        const tiles = map.addTilesetImage('tiles', 'tiles', this.SIZE.w, this.SIZE.h, 1, 2);
         this.layer = map.createLayer(0, tiles, 0, 0);
 
         this.player = this.layer.createFromTiles(52, 0, { key: 'tiles', frame: 52}).pop();
@@ -84,7 +98,7 @@ export default class GameScene extends Phaser.Scene {
         });
 
         this.input.keyboard.on('keydown-M', () => {
-            this.scene.restart({level: Math.min(this.currentLevel + 1, SokobanLevel.Level20)});
+            this.scene.restart({level: Math.min(this.currentLevel + 1, SokobanLevel.Level31)});
         });
 
         this.createPlayerAnimation();
@@ -121,15 +135,17 @@ export default class GameScene extends Phaser.Scene {
             const screenHeight = sizer.height;
             const screenWidth = sizer.width;
             // up-stick
-            this.joySticks!['up'] = this.add.rectangle(65, screenHeight - 165, 50, 80, 0x5090c7, 0.6).setInteractive();
+            this.joySticks!['up'] = this.add.rectangle(65, screenHeight - 185, 50, 80, 0x5090c7, 0.5).setInteractive();
             // down-stick
-            this.joySticks!['down'] = this.add.rectangle(65, screenHeight - 35, 50, 80, 0x5090c7, 0.6).setInteractive();
+            this.joySticks!['down'] = this.add.rectangle(65, screenHeight - 55, 50, 80, 0x5090c7, 0.5).setInteractive();
             // left-stick
-            this.joySticks!['left'] = this.add.rectangle(0, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
+            this.joySticks!['left'] = this.add.rectangle(0, screenHeight - 120, 80, 50, 0x5090c7, 0.5).setInteractive();
             // right-stick
-            this.joySticks!['right'] = this.add.rectangle(130, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
+            this.joySticks!['right'] = this.add.rectangle(130, screenHeight - 120, 80, 50, 0x5090c7, 0.5).setInteractive();
             // rest-stick
-            this.joySticks!['reset'] = this.add.rectangle(screenWidth - 50, screenHeight - 100, 80, 50, 0x5090c7, 0.6).setInteractive();
+            this.joySticks!['reset'] = this.add.rectangle(screenWidth - 50, screenHeight - 140, 80, 50, 0x5090c7, 0.5).setInteractive();            
+            // backToTitle-stick
+            this.joySticks!['main'] = this.add.rectangle(screenWidth - 50, screenHeight - 60, 80, 50, 0xdb6056, 0.5).setInteractive();
             this.initJoySticksEvent();
         }
     }
@@ -205,7 +221,7 @@ export default class GameScene extends Phaser.Scene {
                 start: 81,
                 end: 83
             }),
-            frameRate: 10,
+            frameRate: 15,
             repeat: -1
         });
 
@@ -215,7 +231,7 @@ export default class GameScene extends Phaser.Scene {
                 start: 78,
                 end: 80
             }),
-            frameRate: 10,
+            frameRate: 15,
             repeat: -1
         });
 
@@ -225,7 +241,7 @@ export default class GameScene extends Phaser.Scene {
                 start: 55,
                 end: 57
             }),
-            frameRate: 10,
+            frameRate: 15,
             repeat: -1
         });
 
@@ -235,7 +251,7 @@ export default class GameScene extends Phaser.Scene {
                 start: 52,
                 end: 54
             }),
-            frameRate: 10,
+            frameRate: 15,
             repeat: -1
         });
 
@@ -246,8 +262,6 @@ export default class GameScene extends Phaser.Scene {
             const color = this.BOXCOLORS[i];
             const box = this.boxes![color].find(item => {
                 const rect = item.getBounds();
-                // console.log(rect.x, rect.y, rect.width, rect.height);
-                // console.log(x, y, rect.contains(x, y));
                 return rect.contains(x, y);
             });
 
@@ -269,7 +283,7 @@ export default class GameScene extends Phaser.Scene {
         let boxData: { box: Phaser.GameObjects.Sprite, color: BoxColors } | undefined;
 
         let tweenConfig = {
-            duration: 100
+            duration: 150
         };
 
         let pos: {x: number, y: number, offsetX: number, offsetY: number} 
@@ -365,6 +379,8 @@ export default class GameScene extends Phaser.Scene {
         this.debugPos?.setPosition(pos.x, pos.y);
         
         if (boxData){
+
+            console.log(boxData);
             const box = boxData.box;
             const color = boxData.color;
             const target = GetBoxTargetColor(color);
@@ -390,12 +406,20 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add(Object.assign({
                 targets: box,
                 onComplete: () => {
+
+                    // when target or anchor no exists, it's a solid box
+                    if (!target || !anchor){
+                        return;
+                    }
+
                     const coverTarget = this.hasDestTileAtPos(box.x, box.y, [ target ]);
                     
                     if (coverTarget){
                         this.scores![color] += 1;
+                        
+                        this.sound.play('box-drop');
 
-                        box.setFrame(anchor)
+                        box.setFrame(anchor);
                     }
 
                     // when box move out of the target , scores should substract 1 
@@ -420,6 +444,13 @@ export default class GameScene extends Phaser.Scene {
                 
                 const levelCompleted = this.checkAllTargetCovered();
                 if (levelCompleted){
+
+                    if (this.playerRecord){
+                        this.playerRecord!.level = this.currentLevel;
+
+                        this.data.set('playRecords', this.playerRecord);
+                    }
+
                     this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
                 }
             }
@@ -497,6 +528,11 @@ export default class GameScene extends Phaser.Scene {
         for(let i = 0; i < this.BOXCOLORS.length; i++){
             const color = this.BOXCOLORS[i];
 
+            // ignore the solid box
+            if (color == BoxColors.BoxGreySolid){
+                continue;
+            }
+
             const colorBoxes = this.boxes[color];
             const targetScore = this.scores[color];
 
@@ -529,6 +565,11 @@ export default class GameScene extends Phaser.Scene {
             if (stick === 'reset'){
                 this.joySticks[stick].on('pointerup', ()=>{
                     this.scene.restart();
+                }, this);
+            }
+            if (stick === 'main'){
+                this.joySticks[stick].on('pointerup', ()=>{
+                    this.scene.start('PreloadScene');
                 }, this);
             }
             else{

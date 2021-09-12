@@ -14,8 +14,8 @@ export default class LevelCompleteScene extends Phaser.Scene{
 
     create(data: {steps: number, level: SokobanLevel}){
 
-        const defaultLevel = SokobanLevel.Level6;
-        const highestLevel = SokobanLevel.Level20;
+        const defaultLevel = SokobanLevel.Level1;
+        const highestLevel = SokobanLevel.Level31;
 
         data = Object.assign({steps: 0, level: defaultLevel}, data);
 
