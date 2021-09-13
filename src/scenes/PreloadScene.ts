@@ -105,7 +105,11 @@ export default class PreloadScene extends Phaser.Scene{
             .setVisible(visible)
             .setInteractive();
 
-            const btn_label = this.add.text(posX, posY, `level-${levelInfo.level}`, {color: '#000'})
+            const btn_label = this.add.text(posX, posY, `LV.${levelInfo.level}`, 
+            {
+                color: '#000',
+                fontStyle: 'bolder'
+            })
             .setOrigin(0.5)            
             .setVisible(visible);
 

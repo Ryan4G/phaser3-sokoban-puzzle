@@ -1,6 +1,6 @@
 
 import Phaser from 'phaser';
-import { Materials, SokobanLevel, BoxColors } from '~enums/SokobanEnums';
+import { Materials, SokobanLevel, BoxColors, SpecialMaterials, TweenMoveTypes } from '~enums/SokobanEnums';
 import { GetBoxTargetColor, GetBoxAnchorColor, GetBrowserMobileMode, GetSokobanTileMixinMap } from '~util/SokobanBoxUtil';
 import { MoveOrientation, SokobanLevelInfo } from '~types/SokobanTypes';
 import { IPlayRecords } from '~interfaces/IPlayerRecord';
@@ -63,9 +63,9 @@ export default class GameScene extends Phaser.Scene {
 
     }
 
-    create(data: {level: SokobanLevel}) {
+    create(data: {level: number}) {
 
-        data = Object.assign({level: SokobanLevel.Level1}, data);
+        data = Object.assign({level: SokobanLevel.FirstLevel}, data);
 
         this.currentLevel = data.level;
 
@@ -83,7 +83,15 @@ export default class GameScene extends Phaser.Scene {
         const tiles = map.addTilesetImage('tiles', 'tiles', this.SIZE.w, this.SIZE.h, 1, 2);
         this.layer = map.createLayer(0, tiles, 0, 0);
 
-        this.player = this.layer.createFromTiles(52, 0, { key: 'tiles', frame: 52}).pop();
+        let playerReplaceId = 0;
+        let playerIndexId = 52;
+        // the pixin means the player's position has a tile
+        if (levelInfo.pixin){
+            playerIndexId = levelInfo.pixin;
+            playerReplaceId = levelInfo.pixin % 100;
+        }
+
+        this.player = this.layer.createFromTiles(playerIndexId, playerReplaceId, { key: 'tiles', frame: 52}).pop();
 
         this.player?.setOrigin(0);
 
@@ -94,11 +102,11 @@ export default class GameScene extends Phaser.Scene {
         });
 
         this.input.keyboard.on('keydown-N', () => {
-            this.scene.restart({level: Math.max(this.currentLevel - 1, SokobanLevel.Level1)});
+            this.scene.restart({level: Math.max(this.currentLevel - 1, SokobanLevel.FirstLevel)});
         });
 
         this.input.keyboard.on('keydown-M', () => {
-            this.scene.restart({level: Math.min(this.currentLevel + 1, SokobanLevel.Level31)});
+            this.scene.restart({level: Math.min(this.currentLevel + 1, SokobanLevel.HighestLevel)});
         });
 
         this.createPlayerAnimation();
@@ -109,7 +117,10 @@ export default class GameScene extends Phaser.Scene {
             this.debugPos = this.add.rectangle(0, 0 , 10, 10, 0xff0000);
         }
 
-        this.stepsLabel = this.add.text(540, 10, `Level: ${this.currentLevel}  Steps: ${this.steps}`);
+        this.stepsLabel = this.add.text(540, 10, `Level: ${this.currentLevel}  Steps: ${this.steps}`,
+        {
+            fontSize: '20px'
+        });
 
         /*  
          * center the main camera viewpoint
@@ -275,9 +286,18 @@ export default class GameScene extends Phaser.Scene {
         return undefined;
     }
 
-    private tweenMoved(orientation: MoveOrientation){
+    private tweenMoved(
+            orientation: MoveOrientation, 
+            tweenType = TweenMoveTypes.Normal,
+            movePosition :{x:number, y:number} | undefined = undefined
+        ){
+
         if (!this.player){
             return;
+        }
+
+        if (tweenType === TweenMoveTypes.OnlyBox && !movePosition){
+            throw new Error('The TweenMoveTypes.OnlyBox need \'movePosition\' parameter\' value. ');
         }
 
         let boxData: { box: Phaser.GameObjects.Sprite, color: BoxColors } | undefined;
@@ -292,10 +312,17 @@ export default class GameScene extends Phaser.Scene {
         switch(orientation){
             case 'up':{
 
-                this.player.anims.play('up', true);
+                if (tweenType === TweenMoveTypes.OnlyBox){
+                    pos.x = movePosition!.x + this.SIZE.w / 2;
+                    pos.y = movePosition!.y - this.SIZE.h / 2;
+                }
+                else{
+                    this.player.anims.play('up', true);
 
-                pos.x = this.player.x + this.SIZE.w / 2;
-                pos.y = this.player.y - this.SIZE.h / 2;
+                    pos.x = this.player.x + this.SIZE.w * 0.5;
+                    pos.y = this.player.y - this.SIZE.h * 0.5;
+                }
+
                 pos.offsetX = 0;
                 pos.offsetY = -this.SIZE.h;
                 
@@ -313,10 +340,17 @@ export default class GameScene extends Phaser.Scene {
             }
             case 'down':{
 
-                this.player.anims.play('down', true);
-
-                pos.x = this.player.x + this.SIZE.w * 0.5;
-                pos.y = this.player.y + this.SIZE.h * 1.5;
+                if (tweenType === TweenMoveTypes.OnlyBox){
+                    pos.x = movePosition!.x + this.SIZE.w * 0.5;
+                    pos.y = movePosition!.y + this.SIZE.h * 1.5;
+                }
+                else{
+                    this.player.anims.play('down', true);
+    
+                    pos.x = this.player.x + this.SIZE.w * 0.5;
+                    pos.y = this.player.y + this.SIZE.h * 1.5;
+                }
+                
                 pos.offsetX = 0;
                 pos.offsetY = this.SIZE.h;
 
@@ -333,11 +367,17 @@ export default class GameScene extends Phaser.Scene {
                 break;
             }
             case 'left':{
-
-                this.player.anims.play('left', true);
-
-                pos.x = this.player.x - this.SIZE.w * 0.5;
-                pos.y = this.player.y + this.SIZE.h * 0.5;
+                if (tweenType === TweenMoveTypes.OnlyBox){
+                    pos.x = movePosition!.x - this.SIZE.w * 0.5;
+                    pos.y = movePosition!.y + this.SIZE.h * 0.5;
+                }
+                else{
+                    this.player.anims.play('left', true);
+    
+                    pos.x = this.player.x - this.SIZE.w * 0.5;
+                    pos.y = this.player.y + this.SIZE.h * 0.5;
+                }
+                
                 pos.offsetX = -this.SIZE.w;
                 pos.offsetY = 0;
 
@@ -355,10 +395,17 @@ export default class GameScene extends Phaser.Scene {
             }
             case 'right':{
 
-                this.player.anims.play('right', true);
+                if (tweenType === TweenMoveTypes.OnlyBox){
+                    pos.x = movePosition!.x + this.SIZE.w * 1.5;
+                    pos.y = movePosition!.y + this.SIZE.h * 0.5;
+                }
+                else{
+                    this.player.anims.play('right', true);
+    
+                    pos.x = this.player.x + this.SIZE.w * 1.5;
+                    pos.y = this.player.y + this.SIZE.h * 0.5;
+                }
 
-                pos.x = this.player.x + this.SIZE.w * 1.5;
-                pos.y = this.player.y + this.SIZE.h * 0.5;
                 pos.offsetX = this.SIZE.w;
                 pos.offsetY = 0;
 
@@ -378,9 +425,18 @@ export default class GameScene extends Phaser.Scene {
 
         this.debugPos?.setPosition(pos.x, pos.y);
         
+        const nextSlideBlock = this.hasDestTileAtPos(pos.x, pos.y, [ SpecialMaterials.SlideBlock ]);
+        const nextHoleBlock = this.hasDestTileAtPos(pos.x, pos.y, [ SpecialMaterials.HoleBlock ]);
+
+        console.log(tweenType, nextSlideBlock);
         if (boxData){
 
-            console.log(boxData);
+            // there is a box in front of the slide which player sliding pass..
+            if (tweenType == TweenMoveTypes.OnlyPlayer){
+                return;
+            }
+
+            //console.log(boxData);
             const box = boxData.box;
             const color = boxData.color;
             const target = GetBoxTargetColor(color);
@@ -402,6 +458,9 @@ export default class GameScene extends Phaser.Scene {
             if (!this.scores![color]){
                 this.scores![color] = 0;
             }
+
+            const boxNextSlideBlock = this.hasDestTileAtPos(box.x + pos.offsetX, box.y + pos.offsetY, [ SpecialMaterials.SlideBlock ]);
+            const boxNextHoleBlock = this.hasDestTileAtPos(box.x + pos.offsetX, box.y + pos.offsetY, [ SpecialMaterials.HoleBlock ]);
 
             this.tweens.add(Object.assign({
                 targets: box,
@@ -433,28 +492,49 @@ export default class GameScene extends Phaser.Scene {
                             box.setFrame(color)
                         }
                     }
+                    
+                    console.log('box-in', tweenType, nextSlideBlock, boxNextSlideBlock);
+
+                    if (boxNextSlideBlock){
+                        this.tweenMoved(orientation, TweenMoveTypes.OnlyBox, {x: box.x - pos.offsetX, y: box.y - pos.offsetY});
+                    }
+
+                    if (boxNextHoleBlock){
+                        const holeTile = this.layer!.getTileAtWorldXY(box.x, box.y);
+                        holeTile.index = 0;
+
+                        box.setVisible(false);
+                    }
+
+                    if (tweenType === TweenMoveTypes.OnlyBox){
+                        this.checkLevelComplete(tweenType);
+                    }
                 }
             }, tweenConfig));
         }
         
+        // the tweenType for the box through slide block auto push
+        if (tweenType === TweenMoveTypes.OnlyBox){
+
+            return;
+        }
+
         this.tweens.add(Object.assign({
             targets: this.player,
             onComplete: () => {
-                this.steps!++;
-                
-                const levelCompleted = this.checkAllTargetCovered();
-                if (levelCompleted){
 
-                    if (this.playerRecord){
-                        this.playerRecord!.level = this.currentLevel;
-
-                        this.data.set('playRecords', this.playerRecord);
-                    }
-
-                    this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
+                if (nextSlideBlock && !boxData){
+                    this.tweenMoved(orientation, TweenMoveTypes.OnlyPlayer);
                 }
+
+                if (nextHoleBlock){
+                    this.player!.setVisible(false);
+                }
+                
+                this.checkLevelComplete(tweenType);
             }
         }, tweenConfig));
+
 
     }
 
@@ -582,5 +662,24 @@ export default class GameScene extends Phaser.Scene {
 
     private resetCurrentJoyStick(){
         this.currentJoyStick = 'idle';
+    }
+
+    private checkLevelComplete(tweenType: TweenMoveTypes){
+
+        if (tweenType === TweenMoveTypes.Normal){
+            this.steps!++;
+        }
+
+        const levelCompleted = this.checkAllTargetCovered();
+        if (levelCompleted){
+
+            if (this.playerRecord){
+                this.playerRecord!.level = this.currentLevel;
+
+                this.data.set('playRecords', this.playerRecord);
+            }
+
+            this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
+        }
     }
 }

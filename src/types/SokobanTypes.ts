@@ -4,5 +4,6 @@ export type SokobanLevelInfo = {
     level: number,
     data: number[][], 
     mixin: boolean,
-    title: string
+    title: string,
+    pixin: number | undefined
  };
