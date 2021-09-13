@@ -1,6 +1,6 @@
 
 import Phaser from 'phaser';
-import { Materials, SokobanLevel, BoxColors, SpecialMaterials, TweenMoveTypes } from '~enums/SokobanEnums';
+import { Materials, SokobanLevel, BoxColors, SpecialMaterials, TweenMoveTypes, SokobanMode } from '~enums/SokobanEnums';
 import { GetBoxTargetColor, GetBoxAnchorColor, GetBrowserMobileMode, GetSokobanTileMixinMap } from '~util/SokobanBoxUtil';
 import { MoveOrientation, SokobanLevelInfo } from '~types/SokobanTypes';
 import { IPlayRecords } from '~interfaces/IPlayerRecord';
@@ -29,6 +29,12 @@ export default class GameScene extends Phaser.Scene {
 
     private playerRecord?: IPlayRecords;
 
+    private inputEnable?: boolean;
+
+    private gameMode?: SokobanMode;
+
+    private avaliableColors?: Array<BoxColors>;
+
     constructor() {
         super('GameScene');
         this.SIZE = {w: 64, h: 64};
@@ -46,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
     init(){
         this.steps = 0;
         this.resetCurrentJoyStick();
+        this.inputEnable = true;
 
         if (!this.playerRecord){
             this.playerRecord = this.data.get('playRecords') as IPlayRecords;
@@ -73,6 +80,8 @@ export default class GameScene extends Phaser.Scene {
         
         const levels = this.cache.json.get('levelJson') as Array<SokobanLevelInfo>;
         const levelInfo = levels[this.currentLevel - 1];
+
+        this.gameMode = levelInfo.mode ? levelInfo.mode : SokobanMode.Normal;
 
         const map = this.make.tilemap({
             data: levelInfo.data,
@@ -193,7 +202,7 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        if (this.tweens.isTweening(this.player!)){
+        if (this.isPlayerOrBoxesTweening()){
             return;
         }
 
@@ -292,7 +301,7 @@ export default class GameScene extends Phaser.Scene {
             movePosition :{x:number, y:number} | undefined = undefined
         ){
 
-        if (!this.player){
+        if (!this.player || !this.player.visible){
             return;
         }
 
@@ -428,7 +437,7 @@ export default class GameScene extends Phaser.Scene {
         const nextSlideBlock = this.hasDestTileAtPos(pos.x, pos.y, [ SpecialMaterials.SlideBlock ]);
         const nextHoleBlock = this.hasDestTileAtPos(pos.x, pos.y, [ SpecialMaterials.HoleBlock ]);
 
-        console.log(tweenType, nextSlideBlock);
+        //console.log(tweenType, nextSlideBlock);
         if (boxData){
 
             // there is a box in front of the slide which player sliding pass..
@@ -438,9 +447,9 @@ export default class GameScene extends Phaser.Scene {
 
             //console.log(boxData);
             const box = boxData.box;
-            const color = boxData.color;
-            const target = GetBoxTargetColor(color);
-            const anchor = GetBoxAnchorColor(color);
+            let color = boxData.color;
+            let target = GetBoxTargetColor(color);
+            let anchor = GetBoxAnchorColor(color);
             // is there a sibling box on the next move position ? 
             // the 'pos' is the player next move position with offset
             const siblingBox = this.getBoxDataAtPos(pos.x + pos.offsetX, pos.y + pos.offsetY);
@@ -466,34 +475,47 @@ export default class GameScene extends Phaser.Scene {
                 targets: box,
                 onComplete: () => {
 
-                    // when target or anchor no exists, it's a solid box
-                    if (!target || !anchor){
-                        return;
-                    }
+                    // when target or anchor no exists, it's a solid box, without score
+                    if (target && anchor){
 
-                    const coverTarget = this.hasDestTileAtPos(box.x, box.y, [ target ]);
-                    
-                    if (coverTarget){
-                        this.scores![color] += 1;
+                        let preColor = color;
+                        let preTarget = target;
+
+                        if (this.gameMode == SokobanMode.Change){
+                            color = this.changeBoxColor(box, color)!;
+                            target = GetBoxTargetColor(color)!;
+                            anchor = GetBoxAnchorColor(color)!;
+                        }
+
+                        const coverTarget = this.hasDestTileAtPos(box.x, box.y, [ target ]);
                         
-                        this.sound.play('box-drop');
+                        if (coverTarget){
+                            this.scores![color] += 1;
+                            
+                            this.sound.play('box-drop');
 
-                        box.setFrame(anchor);
-                    }
+                            box.setFrame(anchor);
+                        }
 
-                    // when box move out of the target , scores should substract 1 
-                    const moveOutTarget = this.hasDestTileAtPos(box.x - pos.offsetX, box.y - pos.offsetY, [ target ]);
-                        
-                    if (moveOutTarget){
-                        this.scores![color] = Math.max(0, this.scores![color] - 1);
+                        // when box move out of the target , scores should substract 1 
+                        const moveOutTarget = this.hasDestTileAtPos(
+                            box.x - pos.offsetX, 
+                            box.y - pos.offsetY, 
+                            [ preTarget === target ? target : preTarget ]);
+                            
+                        if (moveOutTarget){
 
-                        // when next position is none, the box should restore its perface
-                        if (!coverTarget){
-                            box.setFrame(color)
+                            let scolor = preColor === color ? color : preColor;
+                            this.scores![scolor] = Math.max(0, this.scores![scolor] - 1);
+
+                            // when next position is none, the box should restore its perface
+                            if (!coverTarget){
+                                box.setFrame(color)
+                            }
                         }
                     }
-                    
-                    console.log('box-in', tweenType, nextSlideBlock, boxNextSlideBlock);
+
+                    //console.log('box-in', tweenType, nextSlideBlock, boxNextSlideBlock);
 
                     if (boxNextSlideBlock){
                         this.tweenMoved(orientation, TweenMoveTypes.OnlyBox, {x: box.x - pos.offsetX, y: box.y - pos.offsetY});
@@ -503,7 +525,8 @@ export default class GameScene extends Phaser.Scene {
                         const holeTile = this.layer!.getTileAtWorldXY(box.x, box.y);
                         holeTile.index = 0;
 
-                        box.setVisible(false);
+                        box.destroy();
+                        box.setPosition();
                     }
 
                     if (tweenType === TweenMoveTypes.OnlyBox){
@@ -596,6 +619,14 @@ export default class GameScene extends Phaser.Scene {
                     }
                 }
             }
+
+            if (this.boxes![i]?.length > 0){
+                if (!this.avaliableColors){
+                    this.avaliableColors = [];
+                }
+
+                this.avaliableColors.push(i);
+            }
         });
 
     }
@@ -681,5 +712,61 @@ export default class GameScene extends Phaser.Scene {
 
             this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
         }
+    }
+
+    private isPlayerOrBoxesTweening():boolean{
+
+        if (!this.player || !this.boxes){
+            return false;
+        }
+
+        if (this.tweens.isTweening(this.player) || !this.inputEnable){
+            return true;
+        }
+
+        let tweenState = false;
+        
+        this.inputEnable = false;
+
+        for(let i = 0; i < this.BOXCOLORS.length; i++){
+            let boxes = this.boxes[i];
+            if (boxes){
+                for(let j = 0; j < boxes.length; j++){                    
+                    if (this.tweens.isTweening(boxes[j])){
+                        tweenState = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        this.inputEnable = true;
+        return tweenState;
+    }
+
+    private changeBoxColor(box: Phaser.GameObjects.Sprite, color: BoxColors){
+
+        if (this.gameMode !== SokobanMode.Change || !this.boxes || !this.avaliableColors){
+            return;
+        }
+
+        let boxIndex = this.boxes![color].indexOf(box)
+        let delBox = this.boxes![color].splice(boxIndex, 1);
+        let nextColor = (()=>{
+            let maxColor = Math.max(...this.avaliableColors);
+            let minColor = Math.min(...this.avaliableColors);
+
+            return color + 1 > maxColor ? minColor : color + 1;
+        })();
+
+        console.log(this.avaliableColors, nextColor);
+
+        delBox[0].setFrame(nextColor);
+
+        if (this.boxes![nextColor]){
+            this.boxes![nextColor].push(delBox[0]);
+        }
+
+        return nextColor;
     }
 }

@@ -48,3 +48,8 @@ export enum TweenMoveTypes{
     OnlyBox,
     OnlyPlayer
 }
+
+export enum SokobanMode{
+    Normal = 1,
+    Change = 2
+}

@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import {IPlayRecords} from '../interfaces/IPlayerRecord';
 import {SokobanLevelInfo} from '../types/SokobanTypes';
 import {ILevelBlockInfo} from '../interfaces/ILevelBlockInfo';
+import { SokobanLevel } from "~enums/SokobanEnums";
 
 export default class PreloadScene extends Phaser.Scene{
 
@@ -76,7 +77,7 @@ export default class PreloadScene extends Phaser.Scene{
         this.levelPicker = {
             currentPage: 1,
             totalPages: 1,
-            totalLevels: levels.length
+            totalLevels: Math.min(levels.length, SokobanLevel.HighestLevel)
         };
 
         this.levelPicker.totalPages = Math.ceil(this.levelPicker.totalLevels / rowSetting.maxPageNumber);
