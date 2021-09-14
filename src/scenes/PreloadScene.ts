@@ -30,6 +30,8 @@ export default class PreloadScene extends Phaser.Scene{
         this.load.json('levelJson', 'assets/map/SokobanLevels.json');
     
         this.load.audio('box-drop', 'assets/sounds/effects/box_drop.mp3');
+
+        this.load.audio('hole-fill', 'assets/sounds/effects/hole_fill.ogg');
     }
 
     create(){

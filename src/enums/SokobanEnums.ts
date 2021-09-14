@@ -35,7 +35,7 @@ export enum AnchorColors{
 
 export enum SokobanLevel{
     FirstLevel = 1,
-    HighestLevel = 48
+    HighestLevel = 50
 }
 
 export enum SpecialMaterials {

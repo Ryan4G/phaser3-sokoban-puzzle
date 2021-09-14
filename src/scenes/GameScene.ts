@@ -33,7 +33,7 @@ export default class GameScene extends Phaser.Scene {
 
     private gameMode?: SokobanMode;
 
-    private avaliableColors?: Array<BoxColors>;
+    private avaliableColors?: Set<BoxColors>;
 
     constructor() {
         super('GameScene');
@@ -202,7 +202,7 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        if (this.isPlayerOrBoxesTweening()){
+        if (this.tweens.isTweening(this.player)){
             return;
         }
 
@@ -522,6 +522,9 @@ export default class GameScene extends Phaser.Scene {
                     }
 
                     if (boxNextHoleBlock){
+
+                        this.sound.play('hole-fill');
+
                         const holeTile = this.layer!.getTileAtWorldXY(box.x, box.y);
                         holeTile.index = 0;
 
@@ -551,6 +554,9 @@ export default class GameScene extends Phaser.Scene {
                 }
 
                 if (nextHoleBlock){
+                    
+                    this.sound.play('hole-fill');
+                        
                     this.player!.setVisible(false);
                 }
                 
@@ -587,6 +593,13 @@ export default class GameScene extends Phaser.Scene {
         let replace_id = 0;
         let frame_id = 0;
 
+        if (!this.avaliableColors){
+            this.avaliableColors = new Set<BoxColors>();
+        }
+        else{
+            this.avaliableColors.clear();
+        }
+
         this.BOXCOLORS.forEach(i => {
 
             index_id = i;
@@ -621,11 +634,7 @@ export default class GameScene extends Phaser.Scene {
             }
 
             if (this.boxes![i]?.length > 0){
-                if (!this.avaliableColors){
-                    this.avaliableColors = [];
-                }
-
-                this.avaliableColors.push(i);
+                this.avaliableColors?.add(i);
             }
         });
 
@@ -712,36 +721,6 @@ export default class GameScene extends Phaser.Scene {
 
             this.scene.start('LevelCompleteScene', {steps: this.steps, level: this.currentLevel});
         }
-    }
-
-    private isPlayerOrBoxesTweening():boolean{
-
-        if (!this.player || !this.boxes){
-            return false;
-        }
-
-        if (this.tweens.isTweening(this.player) || !this.inputEnable){
-            return true;
-        }
-
-        let tweenState = false;
-        
-        this.inputEnable = false;
-
-        for(let i = 0; i < this.BOXCOLORS.length; i++){
-            let boxes = this.boxes[i];
-            if (boxes){
-                for(let j = 0; j < boxes.length; j++){                    
-                    if (this.tweens.isTweening(boxes[j])){
-                        tweenState = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        this.inputEnable = true;
-        return tweenState;
     }
 
     private changeBoxColor(box: Phaser.GameObjects.Sprite, color: BoxColors){
